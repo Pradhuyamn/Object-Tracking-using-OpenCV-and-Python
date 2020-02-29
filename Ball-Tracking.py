@@ -5,7 +5,6 @@ import argparse
 import imutils
 import cv2
 import time
-import pandas as pd
 import matplotlib.pyplot as plt
 
 
@@ -33,13 +32,8 @@ if not args.get("video", False):
 else:
 	camera = cv2.VideoCapture(args["video"])
 
-#Creating a Pandas DataFrame To Store Data Point
-Data_Features = ['x', 'y', 'time']
-Data_Points = pd.DataFrame(data = None, columns = Data_Features , dtype = float)
-
-
-#Reading the time in the begining of the video.
-start = time.time()
+# allow the camera or video file to warm up
+time.sleep(2.0)
 
 # keep looping
 while True:
@@ -47,7 +41,6 @@ while True:
 	(grabbed, frame) = camera.read()
 	
 	#Reading The Current Time
-	current_time = time.time() - start
 
 	# if we are viewing a video and we did not grab a frame,
 	# then we have reached the end of the video
@@ -85,15 +78,13 @@ while True:
 		
 
 		# only proceed if the radius meets a minimum size
-		if (radius < 300) & (radius > 10 ) : 
+		if (radius > 10 ) : 
 			# draw the circle and centroid on the frame,
 			# then update the list of tracked points
 			cv2.circle(frame, (int(x), int(y)), int(radius),
 				(0, 255, 255), 2)
 			cv2.circle(frame, center, 5, (0, 0, 255), -1)
 			
-			#Save The Data Points
-			Data_Points.loc[Data_Points.size/3] = [x , y, current_time]
 
 	# update the points queue
 	pts.appendleft(center)
@@ -118,34 +109,11 @@ while True:
 	if key == ord("q"):
 		break
 
-#'h' is the focal length of the camera
-#'X0' is the correction term of shifting of x-axis
-#'Y0' is the correction term ofshifting of y-axis
-#'time0' is the correction term for correction of starting of time
-h = 0.2
-X0 = -3
-Y0 = 20
-time0 = 0
-theta0 = 0.3
-
-#Applying the correction terms to obtain actual experimental data
-Data_Points['x'] = Data_Points['x']- X0
-Data_Points['y'] = Data_Points['y'] - Y0
-Data_Points['time'] = Data_Points['time'] - time0
-
-#Calulataion of theta value
-Data_Points['theta'] = 2 * np.arctan(Data_Points['y']*0.0000762/h)#the factor correspons to pixel length in real life
-Data_Points['theta'] = Data_Points['theta'] - theta0
-
-#Creating the 'Theta' vs 'Time' plot
-plt.plot(Data_Points['theta'], Data_Points['time'])
-plt.xlabel('Theta')
-plt.ylabel('Time')
-
-#Export The Data Points As cvs File and plot
-Data_Points.to_csv('Data_Set.csv', sep=",")
-plt.savefig('Time_vs_Theta_Graph.svg', transparent= True)
-
-# cleanup the camera and close any open windows
-camera.release()
+# if we are not using a video file, stop the camera video stream
+if not args.get("video", False):
+	vs.stop()
+# otherwise, release the camera
+else:
+	vs.release()
+# close all windows
 cv2.destroyAllWindows()
